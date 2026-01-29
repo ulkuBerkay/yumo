@@ -74,7 +74,7 @@ services:
       - ./frontend:/app
     ports:
       - "5173:5173"
-    command: npm run dev -- --host
+    command: sh -c "npm install && npm run dev -- --host"
     networks:
       - yumo-network
     # Only if we want frontend to wait for backend, typically not strict for dev

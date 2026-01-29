@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import api from '../lib/axios';
+
+import logo from '../assets/logo.jpeg';
+import SearchBar from './SearchBar';
 
 interface Category {
     id: number;
@@ -12,20 +15,10 @@ interface Category {
 export default function Navbar() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [searchOpen, setSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const navigate = useNavigate();
 
     useEffect(() => {
         api.get('/categories').then(res => setCategories(res.data)).catch(console.error);
     }, []);
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            navigate(`/urunler?search=${searchQuery}`);
-            setSearchOpen(false);
-        }
-    };
 
     return (
         <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
@@ -59,36 +52,21 @@ export default function Navbar() {
                     {/* Center: Brand Logo */}
                     <div className="w-1/3 flex justify-center">
                         <Link to="/" className="text-2xl font-bold tracking-tighter hover:opacity-80 transition">
-                            YUMO<span className="text-blue-600">.</span>
+                            <img src={logo} alt="YUMO" className="h-20 object-contain" />
                         </Link>
                     </div>
 
                     {/* Right: Icons */}
                     <div className="w-1/3 flex justify-end items-center space-x-6">
                         {searchOpen ? (
-                            <form onSubmit={handleSearch} className="absolute inset-x-0 top-0 h-20 bg-white flex items-center px-4 sm:px-6 lg:px-8 z-50">
-                                <Search size={20} className="text-gray-400 mr-4" />
-                                <input
-                                    type="text"
-                                    className="flex-1 outline-none text-sm"
-                                    placeholder="Ürün ara..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    autoFocus
-                                />
-                                <button type="button" onClick={() => setSearchOpen(false)} className="text-sm text-gray-500 hover:text-black ml-4">
-                                    Kapat
-                                </button>
-                            </form>
+                            <SearchBar onClose={() => setSearchOpen(false)} />
                         ) : (
                             <button onClick={() => setSearchOpen(true)} className="text-gray-400 hover:text-black transition">
                                 <Search size={20} strokeWidth={1.5} />
                             </button>
                         )}
 
-                        <Link to="/giris" className="text-gray-400 hover:text-black transition">
-                            <User size={20} strokeWidth={1.5} />
-                        </Link>
+
                     </div>
                 </div>
             </div>

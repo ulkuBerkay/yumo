@@ -13,6 +13,8 @@ import AdminProductList from './pages/admin/ProductList';
 import ProductForm from './pages/admin/ProductForm';
 import CategoryList from './pages/admin/CategoryList';
 import CategoryForm from './pages/admin/CategoryForm';
+import SliderList from './pages/admin/SliderList';
+import SliderForm from './pages/admin/SliderForm';
 
 function App() {
   return (
@@ -36,6 +38,9 @@ function App() {
             <Route path="kategoriler" element={<CategoryList />} />
             <Route path="kategoriler/yeni" element={<CategoryForm />} />
             <Route path="kategoriler/:id/duzenle" element={<CategoryForm />} />
+            <Route path="slider" element={<SliderList />} />
+            <Route path="slider/yeni" element={<SliderForm />} />
+            <Route path="slider/duzenle/:id" element={<SliderForm />} />
           </Route>
         </Routes>
       </Router>

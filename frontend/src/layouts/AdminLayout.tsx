@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Package, FolderTree, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, LogOut, Layers } from 'lucide-react';
+import logo from '../assets/logo.jpeg';
 
 export default function AdminLayout() {
     const { user, isLoading, logout } = useAuth();
@@ -26,10 +27,9 @@ export default function AdminLayout() {
         <div className="flex min-h-screen bg-gray-50 font-sans">
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-gray-200">
-                <div className="h-20 flex items-center justify-center border-b border-gray-100">
-                    <span className="text-2xl font-bold tracking-tighter">
-                        YUMO<span className="text-blue-600">.</span> <span className="text-xs font-normal text-gray-400 ml-1">PANEL</span>
-                    </span>
+                <div className="h-24 flex items-center justify-center border-b border-gray-100">
+                    <img src={logo} alt="YUMO" className="h-16 object-contain mr-2" />
+                    <span className="text-xs font-normal text-gray-400">PANEL</span>
                 </div>
 
                 <nav className="p-4 space-y-2">
@@ -44,6 +44,10 @@ export default function AdminLayout() {
                     <Link to="/yonetim/kategoriler" className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${isActive('/yonetim/kategoriler') ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                         <FolderTree size={20} />
                         <span className="font-medium text-sm">Kategoriler</span>
+                    </Link>
+                    <Link to="/yonetim/slider" className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition ${isActive('/yonetim/slider') ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                        <Layers size={20} />
+                        <span className="font-medium text-sm">Slider Yönetimi</span>
                     </Link>
 
                     <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition mt-8">

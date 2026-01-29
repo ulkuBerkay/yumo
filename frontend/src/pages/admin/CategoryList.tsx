@@ -82,10 +82,10 @@ export default function CategoryList() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {categories.map(cat => (
-                            <>
+                            <div key={cat.id} style={{ display: 'contents' }}>
                                 {renderCategoryRow(cat)}
                                 {cat.children?.map(child => renderCategoryRow(child, 1))}
-                            </>
+                            </div>
                         ))}
                     </tbody>
                 </table>
