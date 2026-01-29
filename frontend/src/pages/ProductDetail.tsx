@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import api from '../lib/axios';
 
 interface Product {
@@ -20,8 +21,17 @@ export default function ProductDetail() {
     const [mainImage, setMainImage] = useState<string>('');
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
 
+    // Lightbox State
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+
     const toggleAccordion = (section: string) => {
         setOpenAccordion(openAccordion === section ? null : section);
+    };
+
+    // Helper to get full image URL
+    const getImageUrl = (path: string) => {
+        return path.startsWith('http') ? path : path.replace('http://localhost:8081', '');
     };
 
     useEffect(() => {
@@ -30,11 +40,45 @@ export default function ProductDetail() {
                 const p = res.data;
                 setProduct(p);
                 const primary = p.images.find((img: any) => img.is_primary) || p.images[0];
-                if (primary) setMainImage(primary.image_path.startsWith('http') ? primary.image_path : `http://localhost:8081${primary.image_path}`);
+                if (primary) setMainImage(getImageUrl(primary.image_path));
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
     }, [slug]);
+
+    // Lightbox Navigation
+    const openLightbox = (index: number) => {
+        setLightboxIndex(index);
+        setLightboxOpen(true);
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    };
+
+    const closeLightbox = () => {
+        setLightboxOpen(false);
+        document.body.style.overflow = '';
+    };
+
+    const goToPrev = () => {
+        if (!product) return;
+        setLightboxIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1));
+    };
+
+    const goToNext = () => {
+        if (!product) return;
+        setLightboxIndex((prev) => (prev === product.images.length - 1 ? 0 : prev + 1));
+    };
+
+    // Keyboard navigation
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!lightboxOpen) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') goToPrev();
+            if (e.key === 'ArrowRight') goToNext();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [lightboxOpen, product]);
 
     if (loading) return (
         <div className="flex justify-center items-center min-h-[50vh]">
@@ -43,6 +87,9 @@ export default function ProductDetail() {
     );
 
     if (!product) return <div className="p-20 text-center text-gray-500">Ürün bulunamadı.</div>;
+
+    // Find current main image index for lightbox
+    const currentMainIndex = product.images.findIndex(img => getImageUrl(img.image_path) === mainImage);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -58,11 +105,14 @@ export default function ProductDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20">
                 {/* Left: Gallery */}
                 <div className="space-y-4">
-                    <div className="aspect-w-3 aspect-h-4 bg-gray-100 rounded-sm overflow-hidden">
+                    <div
+                        className="aspect-w-3 aspect-h-4 bg-gray-100 rounded-sm overflow-hidden cursor-zoom-in"
+                        onClick={() => openLightbox(currentMainIndex >= 0 ? currentMainIndex : 0)}
+                    >
                         <img
                             src={mainImage || 'https://via.placeholder.com/600x800?text=No+Image'}
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                         />
                     </div>
                     {product.images.length > 1 && (
@@ -70,11 +120,11 @@ export default function ProductDetail() {
                             {product.images.map((img, idx) => (
                                 <button
                                     key={idx}
-                                    onClick={() => setMainImage(img.image_path.startsWith('http') ? img.image_path : `http://localhost:8081${img.image_path}`)}
-                                    className={`aspect-w-1 aspect-h-1 rounded-sm overflow-hidden border ${mainImage.includes(img.image_path) ? 'border-black' : 'border-transparent'} hover:border-gray-300 transition`}
+                                    onClick={() => setMainImage(getImageUrl(img.image_path))}
+                                    className={`aspect-w-1 aspect-h-1 rounded-sm overflow-hidden border ${mainImage === getImageUrl(img.image_path) ? 'border-black' : 'border-transparent'} hover:border-gray-300 transition`}
                                 >
                                     <img
-                                        src={img.image_path.startsWith('http') ? img.image_path : `http://localhost:8081${img.image_path}`}
+                                        src={getImageUrl(img.image_path)}
                                         alt=""
                                         className="w-full h-full object-cover"
                                     />
@@ -156,6 +206,61 @@ export default function ProductDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Lightbox Modal */}
+            {lightboxOpen && product.images.length > 0 && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+                    onClick={closeLightbox}
+                >
+                    {/* Close Button */}
+                    <button
+                        onClick={closeLightbox}
+                        className="absolute top-6 right-6 text-white/70 hover:text-white transition z-10"
+                    >
+                        <X size={32} />
+                    </button>
+
+                    {/* Previous Button */}
+                    {product.images.length > 1 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+                            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition z-10"
+                        >
+                            <ChevronLeft size={28} />
+                        </button>
+                    )}
+
+                    {/* Image */}
+                    <div
+                        className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={getImageUrl(product.images[lightboxIndex].image_path)}
+                            alt={`${product.name} - ${lightboxIndex + 1}`}
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        />
+                    </div>
+
+                    {/* Next Button */}
+                    {product.images.length > 1 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition z-10"
+                        >
+                            <ChevronRight size={28} />
+                        </button>
+                    )}
+
+                    {/* Counter */}
+                    {product.images.length > 1 && (
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium">
+                            {lightboxIndex + 1} / {product.images.length}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

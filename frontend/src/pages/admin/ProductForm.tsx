@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import api from '../../lib/axios';
 import CustomSelect from '../../components/ui/CustomSelect';
+import ImageCropper from '../../components/ui/ImageCropper';
 
 interface Category {
     id: number;
@@ -23,12 +24,20 @@ export default function ProductForm() {
         is_active: true,
         sort_order: ''
     });
-    const [images, setImages] = useState<FileList | null>(null);
+
+    // Image Handling State
+    const [newImages, setNewImages] = useState<{ file: File, preview: string }[]>([]);
     const [existingImages, setExistingImages] = useState<{ id: number, image_path: string, is_primary: boolean }[]>([]);
+    const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]); // Track deleted images
+    const [cropQueue, setCropQueue] = useState<File[]>([]);
+    const [currentCropImage, setCurrentCropImage] = useState<{ src: string, name: string, isExistingId?: number, isNewIndex?: number } | null>(null);
+
+    // Other State
     const [links, setLinks] = useState<{ site_name: string; url: string }[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedParentCategory, setSelectedParentCategory] = useState<string>('');
     const [sortPositions, setSortPositions] = useState<{ id: number, name: string, sort_order: number }[]>([]);
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, imageId: number | null }>({ isOpen: false, imageId: null });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -60,7 +69,6 @@ export default function ProductForm() {
                     if (p.images) setExistingImages(p.images);
 
                     // Determine parent category
-                    // Check if current category_id is a parent
                     const parent = cats.find(c => c.id === Number(p.category_id));
                     if (parent) {
                         setSelectedParentCategory(String(parent.id));
@@ -79,6 +87,98 @@ export default function ProductForm() {
         fetchData();
     }, [id]);
 
+    // --- Image Cropper Logic ---
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            setCropQueue(files);
+        }
+        e.target.value = ''; // Reset input
+    };
+
+    const handleEditExistingImage = (img: { id: number, image_path: string }) => {
+        // Explicitly strip the absolute domain if present to force relative URL
+        // This ensures the request goes through Vite Proxy (port 5173) which adds CORS headers
+        const src = img.image_path.replace('http://localhost:8081', '');
+
+        setCurrentCropImage({
+            src,
+            name: `edited_image_${img.id}.jpg`,
+            isExistingId: img.id
+        });
+    };
+
+    const handleEditNewImage = (index: number) => {
+        const img = newImages[index];
+        // Create a FileReader to read the file back to data URL for cropping
+        const reader = new FileReader();
+        reader.onload = () => {
+            setCurrentCropImage({
+                src: reader.result as string,
+                name: img.file.name,
+                isNewIndex: index
+            });
+        };
+        reader.readAsDataURL(img.file);
+    };
+
+    useEffect(() => {
+        if (!currentCropImage && cropQueue.length > 0) {
+            const file = cropQueue[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCurrentCropImage({
+                    src: reader.result as string,
+                    name: file.name
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    }, [cropQueue, currentCropImage]);
+
+    const handleCropComplete = (croppedBlob: Blob) => {
+        if (!currentCropImage) return;
+
+        const newFile = new File([croppedBlob], currentCropImage.name, { type: 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(newFile);
+
+        if (currentCropImage.isExistingId) {
+            // It was an existing image being edited
+            // 1. Mark existing as deleted
+            setDeletedImageIds(prev => [...prev, currentCropImage.isExistingId!]);
+            setExistingImages(prev => prev.filter(img => img.id !== currentCropImage.isExistingId));
+
+            // 2. Add as new image
+            setNewImages(prev => [...prev, { file: newFile, preview: previewUrl }]);
+        } else if (currentCropImage.isNewIndex !== undefined) {
+            // It was a new image being re-edited
+            setNewImages(prev => {
+                const updated = [...prev];
+                updated[currentCropImage.isNewIndex!] = { file: newFile, preview: previewUrl };
+                return updated;
+            });
+        } else {
+            // Normal new upload flow
+            setNewImages(prev => [...prev, { file: newFile, preview: previewUrl }]);
+            setCropQueue(prev => prev.slice(1));
+        }
+
+        setCurrentCropImage(null);
+    };
+
+    const handleCropCancel = () => {
+        // If it was queue item, skip it. If edit, just close.
+        if (!currentCropImage?.isExistingId && currentCropImage?.isNewIndex === undefined) {
+            setCropQueue(prev => prev.slice(1));
+        }
+        setCurrentCropImage(null);
+    };
+
+    const removeNewImage = (index: number) => {
+        setNewImages(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // --- Link Logic ---
     const addLink = () => {
         setLinks([...links, { site_name: '', url: '' }]);
     };
@@ -93,8 +193,7 @@ export default function ProductForm() {
         setLinks(newLinks);
     };
 
-    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, imageId: number | null }>({ isOpen: false, imageId: null });
-
+    // --- Delete Existing Image Logic ---
     const handleDeleteClick = (mediaId: number) => {
         setDeleteModal({ isOpen: true, imageId: mediaId });
     };
@@ -112,9 +211,17 @@ export default function ProductForm() {
         }
     };
 
+    // --- Submit ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        try {
+            // Process deletions from edits
+            for (const delId of deletedImageIds) {
+                await api.delete(`/products/${id}/images/${delId}`);
+            }
+        } catch (e) { console.error("Error deleting edited images", e) }
 
         const data = new FormData();
         data.append('name', formData.name);
@@ -125,13 +232,12 @@ export default function ProductForm() {
         data.append('is_active', formData.is_active ? '1' : '0');
         data.append('sort_order', formData.sort_order);
 
-        if (images) {
-            for (let i = 0; i < images.length; i++) {
-                data.append('images[]', images[i]);
-            }
-        }
+        // Append new images
+        newImages.forEach(img => {
+            data.append('images[]', img.file);
+        });
 
-        // Append links as array
+        // Append links
         links.forEach((link, index) => {
             if (link.site_name && link.url) {
                 data.append(`links[${index}][site_name]`, link.site_name);
@@ -141,7 +247,6 @@ export default function ProductForm() {
 
         try {
             if (id) {
-                // Determine HTTP Method spoofing for Laravel if using PUT with FormData
                 data.append('_method', 'PUT');
                 await api.post(`/products/${id}`, data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -154,7 +259,7 @@ export default function ProductForm() {
             navigate('/yonetim/urunler');
         } catch (err) {
             console.error(err);
-            alert('Failed to save product');
+            alert('Ürün kaydedilemedi.');
         } finally {
             setLoading(false);
         }
@@ -172,6 +277,7 @@ export default function ProductForm() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* INPUT FIELDS */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">Ürün Adı</label>
@@ -200,7 +306,6 @@ export default function ProductForm() {
                                     required
                                 />
 
-                                {/* Subcategory Select */}
                                 {(() => {
                                     const parent = categories.find(c => c.id === Number(selectedParentCategory));
                                     if (parent && parent.children && parent.children.length > 0) {
@@ -253,9 +358,6 @@ export default function ProductForm() {
                                     onChange={e => setFormData({ ...formData, sort_order: e.target.value })}
                                     placeholder="Otomatik sıralama için boş bırakın"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Mevcut bir sıra numarası girerseniz, o sıradaki ve sonraki ürünler birer basamak kaydırılır.
-                                </p>
                             </div>
                         </div>
 
@@ -268,41 +370,89 @@ export default function ProductForm() {
                             />
                         </div>
 
+                        {/* IMAGES */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Ürün Görselleri</label>
 
                             {/* Existing Images */}
                             {existingImages.length > 0 && (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                    {existingImages.map((img, idx) => (
-                                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
-                                            <img
-                                                src={img.image_path.startsWith('http') ? img.image_path : `http://localhost:8081${img.image_path}`}
-                                                alt={`Product ${idx}`}
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteClick(img.id)}
-                                                    className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition transform hover:scale-110"
-                                                    title="Görseli Sil"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                <div className="mb-4">
+                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Mevcut Görseller</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {existingImages.map((img, idx) => (
+                                            <div key={idx} className="relative aspect-[4/5] rounded-lg overflow-hidden border border-gray-200 group">
+                                                <img
+                                                    src={img.image_path.replace('http://localhost:8081', '')}
+                                                    alt={`Product ${idx}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditExistingImage(img)}
+                                                        className="bg-white text-black p-2 rounded-full hover:bg-gray-100 transition transform hover:scale-110"
+                                                        title="Görseli Düzenle"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteClick(img.id)}
+                                                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition transform hover:scale-110"
+                                                        title="Görseli Sil"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                                {img.is_primary && (
+                                                    <span className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-1 rounded">Ana Resim</span>
+                                                )}
                                             </div>
-                                            {img.is_primary && (
-                                                <span className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-1 rounded">Ana Resim</span>
-                                            )}
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* New (Pending Upload) Images */}
+                            {newImages.length > 0 && (
+                                <div className="mb-4">
+                                    <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Yüklenecek Görseller ({newImages.length})</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {newImages.map((img, idx) => (
+                                            <div key={idx} className="relative aspect-[4/5] rounded-lg overflow-hidden border border-green-200 ring-2 ring-green-100 group">
+                                                <img
+                                                    src={img.preview}
+                                                    alt={`New Upload ${idx}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditNewImage(idx)}
+                                                        className="bg-white text-black p-2 rounded-full hover:bg-gray-100 transition transform hover:scale-110"
+                                                        title="Görseli Düzenle"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeNewImage(idx)}
+                                                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
                             <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-black transition cursor-pointer relative">
                                 <input
                                     type="file" multiple
-                                    onChange={e => setImages(e.target.files)}
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
                                 <div className="space-y-1 text-center">
@@ -321,18 +471,17 @@ export default function ProductForm() {
                                         />
                                     </svg>
                                     <div className="flex text-sm text-gray-600">
-                                        <span className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                        <span className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
                                             Dosya Yükle
                                         </span>
                                         <p className="pl-1">veya sürükleyip bırakın</p>
                                     </div>
-                                    <p className="text-xs text-gray-500">PNG, JPG, GIF max 10MB</p>
+                                    <p className="text-xs text-gray-500">Otomatik olarak 4:5 oranında kırpılacaktır.</p>
                                 </div>
                             </div>
-                            {images && <p className="mt-2 text-sm text-green-600">{images.length} yeni dosya seçildi</p>}
                         </div>
 
-                        {/* Product Links Section */}
+                        {/* LINKS */}
                         <div>
                             <div className="flex justify-between items-center mb-2">
                                 <label className="block text-sm font-medium text-gray-700">Satın Alma Linkleri</label>
@@ -399,7 +548,6 @@ export default function ProductForm() {
                     </form>
                 </div>
 
-                {/* Sort Order Helper Sidebar */}
                 <div className="lg:col-span-1">
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Mevcut Sıralama</h3>
@@ -437,7 +585,15 @@ export default function ProductForm() {
                 </div>
             </div >
 
-            {/* Delete Confirmation Modal */}
+            {currentCropImage && (
+                <ImageCropper
+                    imageSrc={currentCropImage.src}
+                    onCropComplete={handleCropComplete}
+                    onCancel={handleCropCancel}
+                    aspectRatio={4 / 5}
+                />
+            )}
+
             {
                 deleteModal.isOpen && (
                     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
