@@ -17,7 +17,7 @@ export default function Footer() {
                     {/* Right: Social & Contact */}
                     <div className="flex items-center space-x-6">
                         <a
-                            href="https://instagram.com/yumo"
+                            href="https://instagram.com/yumobag"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-gray-400 hover:text-black transition"
