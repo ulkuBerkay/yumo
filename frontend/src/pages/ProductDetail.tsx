@@ -156,12 +156,23 @@ export default function ProductDetail() {
                     <div className="space-y-4">
                         {/* Cart Functionality Removed */}
                         <div className="flex space-x-4">
-                            <a
-                                href={`mailto:info@yumobag.net?subject=${encodeURIComponent(`Ürün Bilgi Talebi: ${product.name}`)}&body=${encodeURIComponent(`Merhaba,\n\n"${product.name}" ürünü hakkında bilgi almak/sipariş vermek istiyorum.\n\nÜrün Linki: ${window.location.href}`)}`}
-                                className="flex-1 bg-black text-white py-4 px-8 text-sm font-bold uppercase tracking-widest hover:bg-gray-800 transition text-center"
-                            >
-                                Bilgi Al / Sipariş Ver
-                            </a>
+                            {product.links && product.links.length > 0 ? (
+                                <a
+                                    href={product.links[0].url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex-1 bg-black text-white py-4 px-8 text-sm font-bold uppercase tracking-widest hover:bg-gray-800 transition text-center"
+                                >
+                                    Sipariş Ver
+                                </a>
+                            ) : (
+                                <button
+                                    disabled
+                                    className="flex-1 bg-gray-300 text-gray-500 py-4 px-8 text-sm font-bold uppercase tracking-widest cursor-not-allowed text-center"
+                                >
+                                    Sipariş Ver
+                                </button>
+                            )}
                         </div>
                         {product.stock > 0 && product.stock < 10 && (
                             <p className="text-xs text-red-600 font-medium">

@@ -68,6 +68,21 @@ export default function ProductList() {
     const categorySlug = searchParams.get('kategori');
     const searchQuery = searchParams.get('search');
     const sort = searchParams.get('sort') || '';
+    const [categoryName, setCategoryName] = useState<string>('');
+
+    // Fetch category name when slug changes
+    useEffect(() => {
+        if (categorySlug) {
+            api.get('/categories')
+                .then(res => {
+                    const cat = res.data.find((c: any) => c.slug === categorySlug);
+                    if (cat) setCategoryName(cat.name);
+                })
+                .catch(console.error);
+        } else {
+            setCategoryName('');
+        }
+    }, [categorySlug]);
 
     // Reset when filters change
     useEffect(() => {
@@ -143,7 +158,7 @@ export default function ProductList() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="text-center mb-16">
                 <h1 className="text-3xl font-bold text-gray-900 uppercase tracking-widest mb-4">
-                    {searchQuery ? `"${searchQuery}" için sonuçlar` : (categorySlug ? `${categorySlug.toUpperCase()}` : 'Tüm Ürünler')}
+                    {searchQuery ? `"${searchQuery}" için sonuçlar` : (categoryName ? categoryName.toLocaleUpperCase('tr-TR') : (categorySlug ? '' : 'Tüm Ürünler'))}
                 </h1>
                 <div className="w-12 h-1 bg-gray-200 mx-auto"></div>
                 <p className="mt-4 text-gray-500 text-sm max-w-xl mx-auto">
