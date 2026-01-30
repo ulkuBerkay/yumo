@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../lib/axios';
 
-import logo from '../assets/logo.jpeg';
+import logo from '../assets/logoBuyuk.jpeg';
 import SearchBar from './SearchBar';
 
 interface Category {

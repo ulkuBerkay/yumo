@@ -1,5 +1,5 @@
 import { Instagram, Mail } from 'lucide-react';
-import logo from '../assets/logo.jpeg';
+import logo from '../assets/logoBuyuk.jpeg';
 
 export default function Footer() {
     return (
