@@ -25,11 +25,11 @@ export default function Footer() {
                             <Instagram size={20} />
                         </a>
                         <a
-                            href="mailto:info@yumobag.com"
+                            href="mailto:info@yumobag.net"
                             className="flex items-center text-gray-500 hover:text-black text-sm transition font-medium"
                         >
                             <Mail size={18} className="mr-2" />
-                            info@yumobag.com
+                            info@yumobag.net
                         </a>
                     </div>
                 </div>
