@@ -157,9 +157,7 @@ export default function ProductDetail() {
                         {/* Cart Functionality Removed */}
                         <div className="flex space-x-4">
                             <a
-                                href="https://wa.me/905555555555" // Placeholder for WhatsApp or similar
-                                target="_blank"
-                                rel="noreferrer"
+                                href={`mailto:info@yumobag.net?subject=${encodeURIComponent(`Ürün Bilgi Talebi: ${product.name}`)}&body=${encodeURIComponent(`Merhaba,\n\n"${product.name}" ürünü hakkında bilgi almak/sipariş vermek istiyorum.\n\nÜrün Linki: ${window.location.href}`)}`}
                                 className="flex-1 bg-black text-white py-4 px-8 text-sm font-bold uppercase tracking-widest hover:bg-gray-800 transition text-center"
                             >
                                 Bilgi Al / Sipariş Ver
