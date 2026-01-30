@@ -19,7 +19,7 @@ export default function Login() {
         setIsLoading(true);
 
         try {
-            await api.get('/sanctum/csrf-cookie', { baseURL: 'http://localhost:8081' }); // Initialize CSRF protection
+            await api.get('/sanctum/csrf-cookie'); // Initialize CSRF protection
 
             const response = await api.post('/login', { email, password });
 
