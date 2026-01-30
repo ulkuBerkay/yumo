@@ -33,7 +33,7 @@ export default function Navbar() {
 
     return (
         <>
-            <nav className="border-b border-gray-100 bg-white sticky top-0 z-50">
+            <nav className="border-b border-gray-100 bg-white sticky top-0 z-[60]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                         {/* Left: Mobile Menu Trigger */}
@@ -91,12 +91,12 @@ export default function Navbar() {
 
             {/* Mobile Menu Overlay & Sidebar */}
             <div
-                className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-300 md:hidden ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+                className={`fixed inset-0 bg-black/50 z-[100] transition-opacity duration-300 md:hidden ${mobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
                 onClick={() => setMobileMenuOpen(false)}
             />
 
             <div
-                className={`fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out md:hidden ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-[100] shadow-xl transform transition-transform duration-300 ease-in-out md:hidden ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="flex flex-col h-full">
                     <div className="h-20 flex items-center justify-between px-6 border-b border-gray-100">
