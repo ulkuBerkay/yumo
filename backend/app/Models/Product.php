@@ -33,11 +33,12 @@ class Product extends Model implements HasMedia
 
     public function getImagesAttribute()
     {
-        return $this->getMedia('products')->map(function ($media) {
+        return $this->getMedia('products')->sortBy('order_column')->values()->map(function ($media) {
             return [
                 'id' => $media->id,
                 'image_path' => $media->getUrl(), // Returns full URL
                 'is_primary' => $media->getCustomProperty('is_primary', false),
+                'sort_order' => $media->order_column ?? 0,
             ];
         });
     }

@@ -70,7 +70,7 @@ export default function CategoryForm() {
                 <h1 className="text-2xl font-bold text-gray-900">{id ? 'Kategoriyi Düzenle' : 'Yeni Kategori Ekle'}</h1>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-2">Kategori Adı</label>

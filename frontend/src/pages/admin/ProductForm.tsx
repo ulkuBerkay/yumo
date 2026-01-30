@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/axios';
 import CustomSelect from '../../components/ui/CustomSelect';
 import ImageCropper from '../../components/ui/ImageCropper';
@@ -26,8 +26,19 @@ export default function ProductForm() {
     });
 
     // Image Handling State
-    const [newImages, setNewImages] = useState<{ file: File, preview: string }[]>([]);
-    const [existingImages, setExistingImages] = useState<{ id: number, image_path: string, is_primary: boolean }[]>([]);
+    // Image Handling State
+    interface CombinedImage {
+        uniqueId: string;
+        type: 'existing' | 'new';
+        file?: File; // Only for new
+        preview: string;
+        id?: number; // Only for existing
+        is_primary: boolean;
+        sort_order: number;
+    }
+
+    const [allImages, setAllImages] = useState<CombinedImage[]>([]);
+    const [draggedItem, setDraggedItem] = useState<number | null>(null);
     const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]); // Track deleted images
     const [cropQueue, setCropQueue] = useState<File[]>([]);
     const [currentCropImage, setCurrentCropImage] = useState<{ src: string, name: string, isExistingId?: number, isNewIndex?: number } | null>(null);
@@ -66,7 +77,20 @@ export default function ProductForm() {
                         sort_order: p.sort_order || ''
                     });
                     if (p.links) setLinks(p.links);
-                    if (p.images) setExistingImages(p.images);
+                    if (p.links) setLinks(p.links);
+                    if (p.images) {
+                        const formattedImages: CombinedImage[] = p.images
+                            .sort((a: any, b: any) => a.sort_order - b.sort_order)
+                            .map((img: any) => ({
+                                uniqueId: `existing-${img.id}`,
+                                type: 'existing',
+                                id: img.id,
+                                preview: img.image_path,
+                                is_primary: img.is_primary,
+                                sort_order: img.sort_order
+                            }));
+                        setAllImages(formattedImages);
+                    }
 
                     // Determine parent category
                     const parent = cats.find(c => c.id === Number(p.category_id));
@@ -96,10 +120,9 @@ export default function ProductForm() {
         e.target.value = ''; // Reset input
     };
 
-    const handleEditExistingImage = (img: { id: number, image_path: string }) => {
+    const handleEditExistingImage = (img: CombinedImage) => {
         // Explicitly strip the absolute domain if present to force relative URL
-        // This ensures the request goes through Vite Proxy (port 5173) which adds CORS headers
-        const src = img.image_path.replace('http://localhost:8081', '');
+        const src = img.preview.replace('http://localhost:8081', '');
 
         setCurrentCropImage({
             src,
@@ -108,15 +131,17 @@ export default function ProductForm() {
         });
     };
 
-    const handleEditNewImage = (index: number) => {
-        const img = newImages[index];
+    const handleEditNewImage = (uniqueId: string) => {
+        const img = allImages.find(i => i.uniqueId === uniqueId);
+        if (!img || !img.file) return;
+
         // Create a FileReader to read the file back to data URL for cropping
         const reader = new FileReader();
         reader.onload = () => {
             setCurrentCropImage({
                 src: reader.result as string,
-                name: img.file.name,
-                isNewIndex: index
+                name: img.file!.name,
+                isNewIndex: allImages.findIndex(i => i.uniqueId === uniqueId) // Use index as pointer for update
             });
         };
         reader.readAsDataURL(img.file);
@@ -143,23 +168,49 @@ export default function ProductForm() {
         const previewUrl = URL.createObjectURL(newFile);
 
         if (currentCropImage.isExistingId) {
-            // It was an existing image being edited
+            // Replaced an existing image
             // 1. Mark existing as deleted
             setDeletedImageIds(prev => [...prev, currentCropImage.isExistingId!]);
-            setExistingImages(prev => prev.filter(img => img.id !== currentCropImage.isExistingId));
 
-            // 2. Add as new image
-            setNewImages(prev => [...prev, { file: newFile, preview: previewUrl }]);
+            // 2. Replace in allImages list at same position
+            setAllImages(prev => prev.map(img => {
+                if (img.id === currentCropImage.isExistingId) {
+                    return {
+                        uniqueId: `new-from-edit-${Date.now()}`,
+                        type: 'new',
+                        file: newFile,
+                        preview: previewUrl,
+                        is_primary: img.is_primary,
+                        sort_order: img.sort_order // Keep sort order!
+                    };
+                }
+                return img;
+            }));
+
         } else if (currentCropImage.isNewIndex !== undefined) {
             // It was a new image being re-edited
-            setNewImages(prev => {
+            setAllImages(prev => {
                 const updated = [...prev];
-                updated[currentCropImage.isNewIndex!] = { file: newFile, preview: previewUrl };
+                const oldItem = updated[currentCropImage.isNewIndex!];
+                updated[currentCropImage.isNewIndex!] = {
+                    ...oldItem,
+                    file: newFile,
+                    preview: previewUrl
+                };
                 return updated;
             });
         } else {
             // Normal new upload flow
-            setNewImages(prev => [...prev, { file: newFile, preview: previewUrl }]);
+            // Add to end
+            const newImageItem: CombinedImage = {
+                uniqueId: `new-${Date.now()}-${Math.random()}`,
+                type: 'new',
+                file: newFile,
+                preview: previewUrl,
+                is_primary: false,
+                sort_order: allImages.length // Append to end
+            };
+            setAllImages(prev => [...prev, newImageItem]);
             setCropQueue(prev => prev.slice(1));
         }
 
@@ -174,8 +225,12 @@ export default function ProductForm() {
         setCurrentCropImage(null);
     };
 
-    const removeNewImage = (index: number) => {
-        setNewImages(prev => prev.filter((_, i) => i !== index));
+    const removeImage = (uniqueId: string) => {
+        const img = allImages.find(i => i.uniqueId === uniqueId);
+        if (img && img.type === 'existing' && img.id) {
+            setDeletedImageIds(prev => [...prev, img.id!]);
+        }
+        setAllImages(prev => prev.filter(i => i.uniqueId !== uniqueId));
     };
 
     // --- Link Logic ---
@@ -193,22 +248,82 @@ export default function ProductForm() {
         setLinks(newLinks);
     };
 
+    // --- DND Logic ---
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        setDraggedItem(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (draggedItem === null || draggedItem === index) return;
+
+        // Reorder list visually during drag
+        const newItems = [...allImages];
+        const draggedImage = newItems[draggedItem];
+        newItems.splice(draggedItem, 1);
+        newItems.splice(index, 0, draggedImage);
+
+        setDraggedItem(index);
+        setAllImages(newItems);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setDraggedItem(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItem(null);
+    };
+
+    const moveImage = (index: number, direction: 'prev' | 'next') => {
+        if (direction === 'prev' && index === 0) return;
+        if (direction === 'next' && index === allImages.length - 1) return;
+
+        const newItems = [...allImages];
+        const targetIndex = direction === 'prev' ? index - 1 : index + 1;
+
+        // Swap
+        [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+
+        setAllImages(newItems);
+    };
+
     // --- Delete Existing Image Logic ---
-    const handleDeleteClick = (mediaId: number) => {
-        setDeleteModal({ isOpen: true, imageId: mediaId });
+    const handleDeleteClick = (uniqueId: string) => {
+        const img = allImages.find(i => i.uniqueId === uniqueId);
+        if (img && img.type === 'existing') {
+            // If it's existing, confirm before delete (optional, or just move to deletedIds immediately)
+            // Sticking to modal for existing
+            setDeleteModal({ isOpen: true, imageId: img.id! });
+        } else {
+            // New image, just remove
+            removeImage(uniqueId);
+        }
     };
 
     const confirmDeleteImage = async () => {
         if (!deleteModal.imageId) return;
 
-        try {
-            await api.delete(`/products/${id}/images/${deleteModal.imageId}`);
-            setExistingImages(prev => prev.filter(img => img.id !== deleteModal.imageId));
-            setDeleteModal({ isOpen: false, imageId: null });
-        } catch (err) {
-            console.error(err);
-            alert('Görsel silinemedi.');
-        }
+        // Just add to deleted set and remove from visual list
+        setDeletedImageIds(prev => [...prev, deleteModal.imageId!]);
+        setAllImages(prev => prev.filter(img => img.id !== deleteModal.imageId));
+
+        setDeleteModal({ isOpen: false, imageId: null });
+
+        // Note: Previously we did API delete immediately. 
+        // Be consistent: either all deletions happen on save, or clear on API immediately.
+        // The previous code did API delete immediately. Let's keep that pattern if preferred, 
+        // OR better: defer to Save for consistency with Drag and Drop.
+        // PROPOSAL: Defer all to save. But user might expect immediate.
+        // Let's defer to save for simpler State management with DND.
+        // BUT the handleSubmit code processes deletedImageIds separately.
+        // Reverting to immediate delete call as per previous implementation to avoid regression?
+        // Actually, if I delete immediately, I must verify it's gone from server.
+        // Let's just track it in deletedImageIds and do it on Save. Less network calls during edit.
     };
 
     // --- Submit ---
@@ -232,9 +347,26 @@ export default function ProductForm() {
         data.append('is_active', formData.is_active ? '1' : '0');
         data.append('sort_order', formData.sort_order);
 
-        // Append new images
-        newImages.forEach(img => {
-            data.append('images[]', img.file);
+        // Append images with sort order
+        const newUploads: File[] = [];
+
+        allImages.forEach((img, globalIndex) => {
+            const sortVal = globalIndex + 1;
+
+            if (img.type === 'existing' && img.id) {
+                data.append(`existing_images_sort[${img.id}]`, sortVal.toString());
+            } else if (img.type === 'new' && img.file) {
+                // It's a file to upload.
+                const uploadIndex = newUploads.length;
+                newUploads.push(img.file);
+                // Map uploadIndex (in the files array) to the global sortVal
+                data.append(`new_images_sort[${uploadIndex}]`, sortVal.toString());
+            }
+        });
+
+        // Append actual files
+        newUploads.forEach(file => {
+            data.append('images[]', file);
         });
 
         // Append links
@@ -275,7 +407,7 @@ export default function ProductForm() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* INPUT FIELDS */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -374,73 +506,90 @@ export default function ProductForm() {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Ürün Görselleri</label>
 
-                            {/* Existing Images */}
-                            {existingImages.length > 0 && (
+                            {/* Unified Image Grid with Drag & Drop */}
+                            {allImages.length > 0 && (
                                 <div className="mb-4">
-                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Mevcut Görseller</h4>
+                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                        Ürün Görselleri (Sıralamak için sürükleyip bırakın)
+                                    </h4>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {existingImages.map((img, idx) => (
-                                            <div key={idx} className="relative aspect-[4/5] rounded-lg overflow-hidden border border-gray-200 group">
+                                        {allImages.map((img, idx) => (
+                                            <div
+                                                key={img.uniqueId}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, idx)}
+                                                onDragOver={(e) => handleDragOver(e, idx)}
+                                                onDrop={handleDrop}
+                                                onDragEnd={handleDragEnd}
+                                                className={`relative aspect-[4/5] rounded-lg overflow-hidden border transition-all cursor-move group ${draggedItem === idx
+                                                    ? 'opacity-50 border-blue-400 scale-95'
+                                                    : 'border-gray-200 hover:border-black'
+                                                    } ${img.type === 'new' ? 'ring-2 ring-green-500/20' : ''}`}
+                                            >
                                                 <img
-                                                    src={img.image_path.replace('http://localhost:8081', '')}
+                                                    src={img.preview.replace('http://localhost:8081', '')}
                                                     alt={`Product ${idx}`}
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full object-cover pointer-events-none"
                                                 />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+
+                                                {/* Mobile Sort Controls (Always visible on mobile / accessible in overlay) */}
+                                                <div className="absolute bottom-0 left-0 right-0 p-2 flex justify-between items-center bg-black/40 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleEditExistingImage(img)}
-                                                        className="bg-white text-black p-2 rounded-full hover:bg-gray-100 transition transform hover:scale-110"
-                                                        title="Görseli Düzenle"
+                                                        onClick={(e) => { e.stopPropagation(); moveImage(idx, 'prev'); }}
+                                                        disabled={idx === 0}
+                                                        className={`p-1 rounded-full text-white ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/40'}`}
                                                     >
-                                                        <Pencil size={16} />
+                                                        <ChevronLeft size={20} />
                                                     </button>
+
+                                                    {/* Central actions for mobile readability */}
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); img.type === 'existing' ? handleEditExistingImage(img) : handleEditNewImage(img.uniqueId); }}
+                                                            className="p-1.5 bg-white text-black rounded-full"
+                                                        >
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteClick(img.uniqueId); }}
+                                                            className="p-1.5 bg-red-600 text-white rounded-full"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleDeleteClick(img.id)}
-                                                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition transform hover:scale-110"
-                                                        title="Görseli Sil"
+                                                        onClick={(e) => { e.stopPropagation(); moveImage(idx, 'next'); }}
+                                                        disabled={idx === allImages.length - 1}
+                                                        className={`p-1 rounded-full text-white ${idx === allImages.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/40'}`}
                                                     >
-                                                        <Trash2 size={16} />
+                                                        <ChevronRight size={20} />
                                                     </button>
                                                 </div>
-                                                {img.is_primary && (
-                                                    <span className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-1 rounded">Ana Resim</span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
 
-                            {/* New (Pending Upload) Images */}
-                            {newImages.length > 0 && (
-                                <div className="mb-4">
-                                    <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Yüklenecek Görseller ({newImages.length})</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {newImages.map((img, idx) => (
-                                            <div key={idx} className="relative aspect-[4/5] rounded-lg overflow-hidden border border-green-200 ring-2 ring-green-100 group">
-                                                <img
-                                                    src={img.preview}
-                                                    alt={`New Upload ${idx}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleEditNewImage(idx)}
-                                                        className="bg-white text-black p-2 rounded-full hover:bg-gray-100 transition transform hover:scale-110"
-                                                        title="Görseli Düzenle"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeNewImage(idx)}
-                                                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                {/* Status Badges */}
+                                                <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                                                    {img.is_primary && (
+                                                        <span className="bg-black text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">
+                                                            Ana Resim
+                                                        </span>
+                                                    )}
+                                                    {img.type === 'new' && (
+                                                        <span className="bg-green-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded shadow-sm">
+                                                            Yeni
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Sort Order Badge */}
+                                                <div className="absolute top-2 right-2">
+                                                    <span className="bg-white/90 backdrop-blur text-black text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full shadow-sm border border-gray-200">
+                                                        {idx + 1}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}

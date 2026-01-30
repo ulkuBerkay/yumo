@@ -30,7 +30,7 @@ class ProductController extends Controller
         if ($request->has('search')) {
             $search = $request->search;
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                ->orWhere('description', 'like', "%{$search}%");
         }
 
         if ($request->has('sort')) {
@@ -49,7 +49,7 @@ class ProductController extends Controller
                     break;
             }
         } else {
-             $query->orderBy('sort_order', 'asc');
+            $query->orderBy('sort_order', 'asc');
         }
 
         $perPage = $request->input('per_page', 12);
@@ -67,6 +67,7 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'stock' => 'required|integer',
             'images.*' => 'nullable|image|max:10240', // Increased limit
+            'new_images_sort' => 'nullable|array', // Array of sort orders corresponding to images[] indices
             'links' => 'nullable|array',
             'links.*.site_name' => 'required_with:links|string',
             'links.*.url' => 'required_with:links|url',
@@ -99,12 +100,20 @@ class ProductController extends Controller
         }
 
         if ($request->hasFile('images')) {
+            $sortOrders = $request->input('new_images_sort', []);
             foreach ($request->file('images') as $index => $image) {
+                // Determine sort order: explicitly provided or default logic (e.g. 0 or iterate)
+                $order = isset($sortOrders[$index]) ? (int) $sortOrders[$index] : 0;
+
                 $media = $product->addMedia($image)->toMediaCollection('products');
-                if ($index === 0) {
-                     $media->setCustomProperty('is_primary', true);
-                     $media->save();
+
+                // Update order_column
+                $media->order_column = $order;
+
+                if ($index === 0 && !$product->getMedia('products')->where('custom_properties.is_primary', true)->count()) {
+                    $media->setCustomProperty('is_primary', true);
                 }
+                $media->save();
             }
         }
 
@@ -134,7 +143,9 @@ class ProductController extends Controller
             'sort_order' => 'nullable|integer',
             'links' => 'nullable|array',
             'links.*.site_name' => 'required_with:links|string',
-            'links.*.url' => 'required_with:links|url'
+            'links.*.url' => 'required_with:links|url',
+            'existing_images_sort' => 'nullable|array', // [media_id => order, ...]
+            'new_images_sort' => 'nullable|array', // [index => order, ...]
         ]);
 
         if (isset($validated['name'])) {
@@ -142,16 +153,16 @@ class ProductController extends Controller
         }
 
         if (isset($validated['sort_order'])) {
-             $newOrder = $validated['sort_order'];
-             if ($newOrder != $product->sort_order) {
-                 if (Product::where('sort_order', $newOrder)->where('id', '!=', $product->id)->exists()) {
-                     Product::where('sort_order', '>=', $newOrder)->increment('sort_order');
-                 }
-                 $product->sort_order = $newOrder;
-             }
+            $newOrder = $validated['sort_order'];
+            if ($newOrder != $product->sort_order) {
+                if (Product::where('sort_order', $newOrder)->where('id', '!=', $product->id)->exists()) {
+                    Product::where('sort_order', '>=', $newOrder)->increment('sort_order');
+                }
+                $product->sort_order = $newOrder;
+            }
         }
 
-        $product->update(collect($validated)->except('sort_order')->toArray());
+        $product->update(collect($validated)->except(['sort_order', 'existing_images_sort', 'new_images_sort'])->toArray());
         $product->save(); // Save sort_order if it was manually set aside from mass update
 
         if (isset($validated['links'])) {
@@ -159,9 +170,26 @@ class ProductController extends Controller
             $product->links()->createMany($validated['links']);
         }
 
+        // Update Existing Images Sort Order
+        if (isset($validated['existing_images_sort'])) {
+            foreach ($validated['existing_images_sort'] as $mediaId => $order) {
+                // Ensure media belongs to this product for security
+                $media = $product->media()->find($mediaId);
+                if ($media) {
+                    $media->order_column = (int) $order;
+                    $media->save();
+                }
+            }
+        }
+
+        // Handle New Images
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $product->addMedia($image)->toMediaCollection('products');
+            $sortOrders = $request->input('new_images_sort', []);
+            foreach ($request->file('images') as $index => $image) {
+                $order = isset($sortOrders[$index]) ? (int) $sortOrders[$index] : 0;
+                $media = $product->addMedia($image)->toMediaCollection('products');
+                $media->order_column = $order;
+                $media->save();
             }
         }
 

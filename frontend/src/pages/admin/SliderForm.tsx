@@ -114,7 +114,7 @@ export default function SliderForm() {
                 <span className="ml-2 font-medium text-gray-900">{isEdit ? 'Slider Düzenle' : 'Yeni Slider'}</span>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-8">{isEdit ? 'Slider Düzenle' : 'Yeni Slider Ekle'}</h1>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,7 +186,7 @@ export default function SliderForm() {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Buton Yazısı</label>
                                     <input
@@ -212,7 +212,7 @@ export default function SliderForm() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Sıralama (0 ilk sırada)</label>
                             <input

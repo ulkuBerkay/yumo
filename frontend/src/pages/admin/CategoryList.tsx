@@ -62,33 +62,35 @@ export default function CategoryList() {
 
     return (
         <div className="max-w-5xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Kategoriler</h1>
                     <p className="text-gray-500 text-sm mt-1">Ürün kategorilerini yönetin.</p>
                 </div>
-                <Link to="/yonetim/kategoriler/yeni" className="bg-black text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition shadow-sm">
+                <Link to="/yonetim/kategoriler/yeni" className="bg-black text-white px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition shadow-sm w-full md:w-auto">
                     <Plus size={18} /> Yeni Kategori
                 </Link>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori Adı</th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">İşlemler</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {categories.map(cat => (
-                            <div key={cat.id} style={{ display: 'contents' }}>
-                                {renderCategoryRow(cat)}
-                                {cat.children?.map(child => renderCategoryRow(child, 1))}
-                            </div>
-                        ))}
-                    </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori Adı</th>
+                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {categories.map(cat => (
+                                <div key={cat.id} style={{ display: 'contents' }}>
+                                    {renderCategoryRow(cat)}
+                                    {cat.children?.map(child => renderCategoryRow(child, 1))}
+                                </div>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {categories.length === 0 && (
                     <div className="text-center py-12 text-gray-500 text-sm">
                         Henüz kategori eklenmemiş.

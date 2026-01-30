@@ -41,9 +41,14 @@ export default function ProductDetail() {
                 setProduct(p);
                 const primary = p.images.find((img: any) => img.is_primary) || p.images[0];
                 if (primary) setMainImage(getImageUrl(primary.image_path));
+
+                // Dynamic Title
+                document.title = `${p.name} | Yumobag`;
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
+
+        return () => { document.title = 'Yumobag'; }; // Reset on unmount
     }, [slug]);
 
     // Lightbox Navigation
