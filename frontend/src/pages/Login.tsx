@@ -39,24 +39,8 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-white flex">
-            {/* Left Side - Image */}
-            <div className="hidden lg:block lg:w-1/2 relative">
-                <img
-                    src="https://images.unsplash.com/photo-1590874103328-98e099684346?q=80&w=2072&auto=format&fit=crop"
-                    alt="Luxury Bag"
-                    className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/20"></div>
-                <div className="absolute bottom-12 left-12 text-white p-8 max-w-lg">
-                    <h2 className="text-4xl font-bold mb-4 tracking-tight">Tarzını Keşfet.</h2>
-                    <p className="text-lg opacity-90 leading-relaxed font-light">
-                        En yeni koleksiyonlar ve özel tasarımlar ile gardırobunuza modern bir dokunuş yapın.
-                    </p>
-                </div>
-            </div>
-
             {/* Right Side - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16 relative">
+            <div className="w-full lg:w-full flex items-center justify-center p-8 lg:p-16 relative">
                 <div className="w-full max-w-md space-y-8">
                     {/* Logo & Header */}
                     <div className="text-center mb-10">
