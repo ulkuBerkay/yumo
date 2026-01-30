@@ -18,8 +18,8 @@ class DatabaseSeeder extends Seeder
         // Create Admin User
         User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@yumo.com',
-            'password' => bcrypt('password'),
+            'email' => 'admin@yumo.net',
+            'password' => bcrypt('YarenHilalTugsen2026?'),
             'is_admin' => true,
         ]);
 

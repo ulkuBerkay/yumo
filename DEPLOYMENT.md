@@ -4,6 +4,36 @@ Bu doküman, projenizi sıfırdan canlıya (production) almak için gereken tüm
 
 ---
 
+## 0. SSH Anahtarı Oluşturma (Hetzner İçin)
+
+Hetzner sunucusuna şifresiz ve güvenli bağlanmak için SSH anahtarı oluşturmanız önerilir.
+
+1.  **Terminali Açın** ve şu komutu yazın:
+    ```bash
+    ssh-keygen -t ed25519 -C "yumobag-server"
+    ```
+2.  Sorulan sorulara **Enter** diyerek geçin (şifre belirlemek istemiyorsanız boş bırakın).
+3.  **Public Key'i Kopyalayın:**
+    ```bash
+    cat ~/.ssh/id_ed25519.pub | pbcopy
+    ```
+    *(Bu komut anahtarı panoya kopyalar. `pbcopy` çalışmazsa `cat` çıktısını fareyle seçip kopyalayın).*
+4.  **Hetzner Paneline Ekleyin:**
+    *   Hetzner Cloud Console -> **Security** -> **SSH Keys** -> **Add SSH Key**.
+    *   Kopyaladığınız kodu yapıştırın ve bir isim verin (Örn: `Macbook`).
+    *   Sunucuyu oluştururken (2. Adım) bu anahtarı seçmeyi unutmayın.
+
+    > **Not:** Eğer anahtarı oluştururken varsayılan isim yerine farklı bir isim verdiyseniz (örneğin `id_ed25519` yerine `yumo` yazdıysanız), aşağıdaki komutla içeriği okumalısınız:
+    > ```bash
+    > cat ~/yumo.pub | pbcopy
+    > ```
+    > Ve sunucuya bağlanırken anahtar yolunu belirtmelisiniz:
+    > ```bash
+    > ssh -i ~/yumo root@SUNUCU_IP_ADRESI
+    > ```
+
+---
+
 ## 1. Domain ve Cloudflare Ayarları
 1.  **Cloudflare Hesabı:** Cloudflare'e giriş yapın ve `yumobag.net` domainini ekleyin.
 2.  **Nameservers:** Domain satın aldığınız panelden (Namecheap, GoDaddy vb.) nameserver'ları Cloudflare'in size verdiği `ns1.cloudflare.com` ve `ns2.cloudflare.com` adreslerine yönlendirin.
