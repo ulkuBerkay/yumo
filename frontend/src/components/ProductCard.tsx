@@ -34,7 +34,7 @@ export default function ProductCard({ product }: { product: Product }) {
                     {product.category?.name}
                 </p>
                 <p className="text-sm font-semibold text-gray-900 mt-2">
-                    {product.price} ₺
+                    {parseFloat(product.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
                 </p>
             </div>
         </Link>

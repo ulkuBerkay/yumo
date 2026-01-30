@@ -145,7 +145,9 @@ export default function ProductDetail() {
                         {product.category?.name}
                     </span>
                     <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-4">{product.name}</h1>
-                    <p className="text-2xl font-medium text-gray-900 mb-8">{product.price} ₺</p>
+                    <p className="text-2xl font-medium text-gray-900 mb-8">
+                        {parseFloat(product.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                    </p>
 
                     <div className="prose prose-sm text-gray-600 mb-10 leading-relaxed">
                         <p>{product.description}</p>
