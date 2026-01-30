@@ -77,13 +77,13 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                     />
-                    
+
                     {loading && (
                         <Loader2 className="animate-spin text-gray-400 mr-4" size={20} />
                     )}
-                    
-                    <button 
-                        type="button" 
+
+                    <button
+                        type="button"
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     >
@@ -101,18 +101,18 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {results.map(product => (
-                                        <Link 
-                                            key={product.id} 
+                                        <Link
+                                            key={product.id}
                                             to={`/urunler/${product.slug}`}
                                             onClick={onClose}
                                             className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors group"
                                         >
                                             <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 border border-gray-100">
                                                 {product.images?.[0] ? (
-                                                    <img 
-                                                        src={String(product.images[0].image_path).startsWith('http') 
-                                                            ? product.images[0].image_path 
-                                                            : `http://localhost:8081/storage/${product.images[0].image_path}`} 
+                                                    <img
+                                                        src={String(product.images[0].image_path).startsWith('http')
+                                                            ? product.images[0].image_path
+                                                            : `http://localhost:8081/storage/${product.images[0].image_path}`}
                                                         alt={product.name}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                     />
@@ -134,7 +134,7 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                                     ))}
                                 </div>
                                 <div className="mt-6 pt-4 border-t border-gray-50 flex justify-center">
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             navigate(`/urunler?search=${query}`);
                                             onClose();
@@ -154,10 +154,10 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                     </div>
                 )}
             </div>
-            
+
             {/* Backdrop */}
-            <div 
-                className="fixed inset-0 top-auto bg-black/20 backdrop-blur-sm z-[-1] h-[calc(100vh-6rem)]" 
+            <div
+                className="fixed inset-0 top-auto bg-black/20 backdrop-blur-sm z-[-1] h-[calc(100vh-6rem)]"
                 onClick={onClose}
             ></div>
         </div>
