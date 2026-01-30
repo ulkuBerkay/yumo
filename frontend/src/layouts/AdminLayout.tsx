@@ -2,7 +2,7 @@ import { Outlet, Link, useNavigate, useLocation, Navigate } from 'react-router-d
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, Package, FolderTree, LogOut, Layers, Menu, X } from 'lucide-react';
-import logo from '../assets/logo.jpeg';
+import logo from '../assets/logoBuyuk.jpeg';
 
 export default function AdminLayout() {
     const { user, isLoading, logout } = useAuth();
@@ -61,7 +61,7 @@ export default function AdminLayout() {
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
             `}>
                 <div className="h-24 hidden md:flex items-center justify-center border-b border-gray-100">
-                    <img src={logo} alt="YUMO" className="h-16 object-contain mr-2" />
+                    <img src={logo} alt="YUMO" className="h-8 object-contain mr-2" />
                     <span className="text-xs font-normal text-gray-400">PANEL</span>
                 </div>
 
