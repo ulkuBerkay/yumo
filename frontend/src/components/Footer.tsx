@@ -10,7 +10,7 @@ export default function Footer() {
                     <div className="flex flex-col md:flex-row items-center text-center md:text-left space-y-3 md:space-y-0 md:space-x-4">
                         <img src={logo} alt="YUMO" className="h-8 md:h-10 object-contain" />
                         <span className="text-gray-500 text-xs md:text-sm">
-                            &copy; 2026 Yumo. Tüm hakları saklıdır.
+                            &copy; 2026 Yumobag. Tüm hakları saklıdır.
                         </span>
                     </div>
 
